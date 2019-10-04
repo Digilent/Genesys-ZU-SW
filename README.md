@@ -1,1 +1,1 @@
-# Root commit
+Baremetal/Standalone repository for Zuca
