@@ -1,8 +1,8 @@
-RemoteSystemsTempFiles/
-.metadata
-*.log
-*_bsp/*
-!*_bsp/system.mss
-!*_bsp/.cproject
-!*_bsp/.project
-!*_bsp/.sdkproject
+# ignore everything in workspace sub-dir
+/ws/*
+# except the cleanup scripts
+!/ws/cleanup.cmd
+!/ws/cleanup.sh
+
+#ignore Packages/ created by Vitis
+/Packages
