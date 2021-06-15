@@ -110,12 +110,10 @@
 #include "xhdmi_menu.h"
 #include "xhdmi_hdcp_keys_table.h"
 #include "xhdmi_example.h"
-
-//TODO
 #include "si5432_axi.h"
 #include "xtime_l.h"
 #include "tmds181.h"
-//TODO
+
 
 /***************** Macros (Inline Functions) Definitions *********************/
 /* These macro values need to changed whenever there is a change in version */
@@ -273,8 +271,6 @@ XHdmi_Menu         HdmiMenu;
  *  */
 u8                 IsPassThrough = (FALSE);
 u8                 StartTxAfterRxFlag = (FALSE);
-
-//TODO
 
 #if defined(XPS_BOARD_GZU_5EV)
 /*
