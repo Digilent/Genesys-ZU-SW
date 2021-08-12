@@ -1,6 +1,6 @@
 # Genesys ZU-3EG Software Repository
 
-## Genesys ZU-3EG Base Demo
+## Genesys ZU-3EG Hello World Demo
 
 For more information about the Genesys-ZU, visit its [Resource Center](https://reference.digilentinc.com/programmable-logic/genesys-zu/start) on the Digilent Wiki.
 
