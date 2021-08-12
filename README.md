@@ -9,6 +9,8 @@ Each demo contained in this repository is documented on the Digilent Wiki, links
 | Name and Wiki Link | Description |
 |--------------------|-------------|
 | [Genesys ZU-5EV HDMI Demo](https://reference.digilentinc.com/learn/programmable-logic/tutorials/genesys-zu-5ev-demo-hdmi/start) | A project that demonstrates the usage of the Genesys ZU-5EV's HDMI in and HDMI out ports.  |
+| Genesys ZU-5EV Hello World Demo| Simple project that configures the Zynq Ultrascale+ MPSoc with the given board file, and outputs "Hello World" on the serial terminal.  |
+| Genesys ZU-3EG Hello World Demo| Simple project that configures the Zynq Ultrascale+ MPSoc with the given board file, and outputs "Hello World" on the serial terminal.  |
 
 For more information about the Genesys-ZU , visit its [Resource Center](https://reference.digilentinc.com/programmable-logic/genesys-zu/start) on the Digilent Wiki.
 
