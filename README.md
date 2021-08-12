@@ -1,6 +1,6 @@
 # Genesys ZU-5EV Software Repository
 
-## Genesys ZU-5EV Base Demo
+## Genesys ZU-5EV Hello World Demo
 
 For more information about the Genesys-ZU, visit its [Resource Center](https://reference.digilentinc.com/programmable-logic/genesys-zu/start) on the Digilent Wiki.
 
