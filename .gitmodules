@@ -1,0 +1,6 @@
+[submodule "repo"]
+	path = repo
+	url = git@github.com:Digilent/embeddedsw.git
+[submodule "digilent-vitis-scripts"]
+	path = digilent-vitis-scripts
+	url = git@github.com:Digilent/digilent-vitis-scripts.git
