@@ -15,8 +15,8 @@ set app_name [file tail $script_dir]
 
 # Variables created by checkin.tcl
 set lang "c"
-set domain "domain_psu_cortexa53_0"
-set platform "system_wrapper"
+set domain "5ev_standalone_bsp"
+set platform "5ev_hw_pf"
 set sysproj "5ev_master_system"
 
 # Handle dependent variables

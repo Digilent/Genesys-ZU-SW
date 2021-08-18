@@ -14,7 +14,7 @@ set os "standalone"
 set proc "psu_cortexa53_0"
 
 # Destination platform needs to be made active first
-platform active "system_wrapper"
+platform active "5ev_hw_pf"
 
 domain create -name $domain_name -proc $proc -arch $arch -os $os
 
