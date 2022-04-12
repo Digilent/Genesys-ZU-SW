@@ -4,3 +4,6 @@
 [submodule "repo/embeddedsw"]
 	path = repo/embeddedsw
 	url = git@github.com:Digilent/embeddedsw.git
+[submodule "repo"]
+	path = repo
+	url = git@github.com:Digilent/embeddedsw.git
