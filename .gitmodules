@@ -1,9 +1,4 @@
-[submodule "scripts"]
-	path = scripts
-	url = https://github.com/Digilent/digilent-vitis-scripts
-[submodule "repo/embeddedsw"]
-	path = repo/embeddedsw
-	url = git@github.com:Digilent/embeddedsw.git
 [submodule "repo"]
 	path = repo
-	url = git@github.com:Digilent/embeddedsw.git
+	url = url = ../embeddedsw.git
+
