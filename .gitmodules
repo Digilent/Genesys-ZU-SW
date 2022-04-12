@@ -1,4 +1,4 @@
 [submodule "repo"]
 	path = repo
-	url = url = ../embeddedsw.git
+	url = ../embeddedsw.git
 
