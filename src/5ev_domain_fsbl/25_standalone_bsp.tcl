@@ -9,14 +9,20 @@ puts "INFO: Running $script"
 set domain_name [file tail $script_dir]
 
 # Modify these for custom domain/BSP settings
-set arch "64-bit"
+
 set os "standalone"
 set proc "psu_cortexa53_0"
+set keep_boot_domain "0"
 
 # Destination platform needs to be made active first
 platform active "5ev_hw_pf"
 
-domain create -name $domain_name -proc $proc -arch $arch -os $os
+domain create -name $domain_name -proc $proc -os $os
+
+if {$keep_boot_domain == 1} {
+	platform config -create-boot-bsp
+	platform write
+}
 
 # Customize BSP, this replaces *.mss file
 bsp config clocking "false"
@@ -38,9 +44,9 @@ bsp config compiler_flags "-O2 -c"
 bsp config exec_mode "aarch64"
 bsp config extra_compiler_flags "-g -Wall -Wextra -DUHS_MODE_ENABLE"
 
+
 bsp setlib -name xilffs
 bsp config read_only "true"
 bsp config use_mkfs "false"
-
 bsp setlib -name xilsecure
 bsp setlib -name xilpm

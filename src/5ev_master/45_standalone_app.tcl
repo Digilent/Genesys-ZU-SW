@@ -21,7 +21,7 @@ set sysproj "5ev_master_system"
 
 # Handle dependent variables
 if {$lang == "c"} {
-	set template "Empty Application"
+	set template "Empty Application(C)"
 } elseif {$lang == "c++"} {
 	set template "Empty Application (C++)"
 } else {
@@ -50,10 +50,12 @@ app config -set -name $app_name assembler-flags {}
 app config -set -name $app_name compiler-misc {-c -fmessage-length=0 -MT"$@"}
 app config -set -name $app_name compiler-optimization {Optimize more (-O2)}
 app config -add -name $app_name include-path $script_dir/src
+app config -set -name $app_name linker-misc {}
 app config -set -name $app_name linker-script $script_dir/src/lscript.ld
 app config -set -name $app_name build-config Debug
 app config -set -name $app_name assembler-flags {}
 app config -set -name $app_name compiler-misc {-c -fmessage-length=0 -MT"$@"}
 app config -set -name $app_name compiler-optimization {None (-O0)}
 app config -add -name $app_name include-path $script_dir/src
+app config -set -name $app_name linker-misc {}
 app config -set -name $app_name linker-script $script_dir/src/lscript.ld

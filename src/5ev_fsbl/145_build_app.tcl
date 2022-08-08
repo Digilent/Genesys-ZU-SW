@@ -6,7 +6,6 @@ set script_dir [file normalize [file dirname $script]]
 
 puts "INFO: Running $script"
 
-set app_name [file tail $script_dir]
-
+set app_name [file tail $script_dir] 
 app config -name $app_name -set build-config release
 app build -name $app_name
