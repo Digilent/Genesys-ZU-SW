@@ -236,7 +236,7 @@ extern XHdcp_Repeater HdcpRepeater;
 
 /*HDMI EDID*/
 #ifdef XPAR_XV_HDMITXSS_NUM_INSTANCES
-extern EdidHdmi20 EdidHdmi20_t;
+extern EdidHdmi20_t EdidHdmi20;
 #endif
 extern u8 Buffer[];
 
@@ -1473,8 +1473,8 @@ static XHdmi_MenuType XHdmi_GtPllLayoutMenu(XHdmi_Menu *InstancePtr, u8 Input) {
 ******************************************************************************/
 void XHdmi_DisplayEdidMenu(void) {
 	xil_printf("\r\n");
-	SinkCapabilityCheck(&EdidHdmi20_t);
-	SinkCapWarningMsg(&EdidHdmi20_t);
+	SinkCapabilityCheck(&EdidHdmi20);
+	SinkCapWarningMsg(&EdidHdmi20);
 	xil_printf("---------------------\r\n");
 	xil_printf("---   EDID MENU   ---\r\n");
 	xil_printf("---------------------\r\n");
@@ -1517,7 +1517,7 @@ static XHdmi_MenuType XHdmi_EdidMenu(XHdmi_Menu *InstancePtr, u8 Input) {
 			/* Only Parse the EDID when the Read EDID success */
 			if (Status == XST_SUCCESS) {
 				XV_VidC_parse_edid((u8*)&Buffer,
-									&EdidHdmi20_t.EdidCtrlParam,
+									&EdidHdmi20.EdidCtrlParam,
 									XVIDC_VERBOSE_ENABLE);
 			} else {
 				xil_printf(ANSI_COLOR_YELLOW "EDID parsing has failed.\r\n"

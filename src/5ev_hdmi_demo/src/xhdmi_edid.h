@@ -126,9 +126,9 @@ typedef struct {
 	u8 IsReReadScdcRetry;
 	/*Counter for Re-Read SCDC of Sink Retry
 	 * (Non-EDID related)*/
-} EdidHdmi20;
+} EdidHdmi20_t;
 
-EdidHdmi20 EdidHdmi20_t;
+extern EdidHdmi20_t EdidHdmi20;
 #endif
 #ifdef XPAR_XV_HDMIRXSS_NUM_INSTANCES
 /*
@@ -200,14 +200,14 @@ static const u8 Edid3[] = {
 /************************** Function Prototypes *****************************/
 #ifdef XPAR_XV_HDMITXSS_NUM_INSTANCES
 void EdidScdcCheck(XV_HdmiTxSs          *HdmiTxSsPtr,
-                   EdidHdmi20           *CheckHdmi20Param);
+                   EdidHdmi20_t           *CheckHdmi20Param);
 
 u8 SinkReadyCheck (XV_HdmiTxSs          *HdmiTxSsPtr,
-                    EdidHdmi20           *CheckHdmi20Param);
+                    EdidHdmi20_t           *CheckHdmi20Param);
 
-void EDIDConnectInit(EdidHdmi20           *CheckHdmi20Param);
-void SinkCapWarningMsg(EdidHdmi20 *CheckHdmi20Param);
-void SinkCapabilityCheck(EdidHdmi20 *CheckHdmi20Param);
+void EDIDConnectInit(EdidHdmi20_t           *CheckHdmi20Param);
+void SinkCapWarningMsg(EdidHdmi20_t *CheckHdmi20Param);
+void SinkCapabilityCheck(EdidHdmi20_t *CheckHdmi20Param);
 #endif
 #ifdef __cplusplus
 }

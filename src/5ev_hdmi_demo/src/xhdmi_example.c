@@ -184,6 +184,10 @@ void Disable_TMDS181_HPD_passthrough();
 #endif
 
 /************************* Variable Definitions *****************************/
+#if defined (ARMR5) || ((__aarch64__) && (!defined XPS_BOARD_ZCU104))
+XIicPs Ps_Iic0;
+#endif
+
 /* VPHY structure */
 XVphy              Vphy;
 u8                 VphyErrorFlag;
@@ -1114,9 +1118,9 @@ void TxConnectCallback(void *CallbackRef) {
 		XVphy_IBufDsEnable(&Vphy, 0, XVPHY_DIR_TX, (TRUE));
 
 		/* Initialize EDID App during cable connect */
-		EDIDConnectInit(&EdidHdmi20_t);
+		EDIDConnectInit(&EdidHdmi20);
 		/* Read the EDID and the SCDC */
-		EdidScdcCheck(HdmiTxSsPtr, &EdidHdmi20_t);
+		EdidScdcCheck(HdmiTxSsPtr, &EdidHdmi20);
 
 #if (XPAR_VPHY_0_TRANSCEIVER == XVPHY_GTXE2)
 		/* When the GT TX and RX are coupled, then start the TXPLL */
@@ -1481,7 +1485,7 @@ void TxVsCallback(void *CallbackRef) {
 	/* Check whether the sink is DVI/HDMI Supported
 	 * If the sink is DVI, don't send Info-frame
 	 */
-	if (EdidHdmi20_t.EdidCtrlParam.IsHdmi == XVIDC_ISHDMI) {
+	if (EdidHdmi20.EdidCtrlParam.IsHdmi == XVIDC_ISHDMI) {
 		SendInfoframe(&HdmiTxSs);
 	}
 }
@@ -1949,7 +1953,7 @@ void TxStreamUpCallback(void *CallbackRef) {
 	HdmiTxSsVidStreamPtr = XV_HdmiTxSs_GetVideoStream(HdmiTxSsPtr);
 
 	/* Check whether the sink is DVI/HDMI Supported */
-	if (EdidHdmi20_t.EdidCtrlParam.IsHdmi == XVIDC_ISDVI) {
+	if (EdidHdmi20.EdidCtrlParam.IsHdmi == XVIDC_ISDVI) {
 		if (HdmiTxSsVidStreamPtr->ColorDepth != XVIDC_BPC_8 ||
 			HdmiTxSsVidStreamPtr->ColorFormatId != XVIDC_CSF_RGB) {
 			xil_printf(ANSI_COLOR_YELLOW "Un-able to set TX "
@@ -3528,7 +3532,7 @@ int main() {
 #endif
 
 #ifdef XPAR_XV_HDMITXSS_NUM_INSTANCES
-		TxSinkReady = SinkReadyCheck(&HdmiTxSs, &EdidHdmi20_t);
+		TxSinkReady = SinkReadyCheck(&HdmiTxSs, &EdidHdmi20);
 
 		if (StartTxAfterRxFlag && TxSinkReady) {
 			xil_printf("Starting TX after RX...\r\n");

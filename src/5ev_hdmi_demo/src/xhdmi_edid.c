@@ -54,9 +54,12 @@
 
 /************************** Function Prototypes ******************************/
 
+/************************** Variable Definitions ******************************/
+#ifdef XPAR_XV_HDMITXSS_NUM_INSTANCES
+EdidHdmi20_t EdidHdmi20;
 
 /************************** Function Definitions *****************************/
-#ifdef XPAR_XV_HDMITXSS_NUM_INSTANCES
+
 /*****************************************************************************/
 /**
 *
@@ -73,7 +76,7 @@
 *
 ******************************************************************************/
 void EdidScdcCheck(XV_HdmiTxSs          *HdmiTxSsPtr,
-                   EdidHdmi20           *CheckHdmi20Param)
+                   EdidHdmi20_t           *CheckHdmi20Param)
 {
     u8 Buffer [256];
     int Status;
@@ -206,7 +209,7 @@ void EdidScdcCheck(XV_HdmiTxSs          *HdmiTxSsPtr,
 *
 ******************************************************************************/
 u8 SinkReadyCheck (XV_HdmiTxSs          *HdmiTxSsPtr,
-                    EdidHdmi20           *CheckHdmi20Param)
+                    EdidHdmi20_t           *CheckHdmi20Param)
 {
 	u8 SinkReadyStatus;
 
@@ -270,7 +273,7 @@ u8 SinkReadyCheck (XV_HdmiTxSs          *HdmiTxSsPtr,
 * @note   None.
 *
 ******************************************************************************/
-void EDIDConnectInit(EdidHdmi20           *CheckHdmi20Param){
+void EDIDConnectInit(EdidHdmi20_t           *CheckHdmi20Param){
 	/*Enable EDID Read During Cable Connect*/
 	CheckHdmi20Param->EdidCableConnectRead = (TRUE);
 
@@ -298,7 +301,7 @@ void EDIDConnectInit(EdidHdmi20           *CheckHdmi20Param){
 * @note   None.
 *
 ******************************************************************************/
-void SinkCapabilityCheck(EdidHdmi20 *CheckHdmi20Param){
+void SinkCapabilityCheck(EdidHdmi20_t *CheckHdmi20Param){
 	if (!CheckHdmi20Param->EdidCtrlParam.Is48bppSupp) {
 		CheckHdmi20Param->HdmiSinkWarningFlag |=
 				XV_HDMI_SINK_DEEP_COLOR_16_NOT_SUPP;
@@ -330,7 +333,7 @@ void SinkCapabilityCheck(EdidHdmi20 *CheckHdmi20Param){
 * @note   None.
 *
 ******************************************************************************/
-void SinkCapWarningMsg(EdidHdmi20 *CheckHdmi20Param){
+void SinkCapWarningMsg(EdidHdmi20_t *CheckHdmi20Param){
 	if (CheckHdmi20Param->HdmiSinkWarningFlag &
 			XV_HDMI_SINK_EDID_SCDC_MISMATCH) {
 			xil_printf(ANSI_COLOR_YELLOW "Warning: Connected Sink's EDID "
