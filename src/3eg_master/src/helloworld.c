@@ -47,15 +47,111 @@
 
 #include <stdio.h>
 #include "platform.h"
-#include "xil_printf.h"
+#include "xparameters.h"
+#include "ZmodAwgAxiConfiguration.h"
+#include "xiic.h"
+#include "dpmutil/dpmutil.h"
 
+int PrintCalibration () {
+	int fdI2cDev = 0; // this isn't using linux so this doesn't matter
+	char *PortName;
+
+	dpmutilPortInfo_t PortInfo[8] = {0};
+
+	// enumerate the Syzygy ports to figure out which have Zmods installed
+	dpmutilFEnum(FALSE, FALSE, PortInfo);
+
+	SzgDnaHeader DnaHeader;
+	SzgDnaStrings DnaStrings = {0};
+
+	// Iterate over all of the ports enumerated
+	for (u32 iPort = 0; iPort < 8; iPort++) {
+		// check if a zmod is populated on that port
+		if (PortInfo[iPort].portSts.fPresent == 0) {
+			continue;
+		}
+
+		// Use group VIO to detect which port is which. For the Eclypse Z7, Zmod A = 0, Zmod B = 1
+		switch (PortInfo[iPort].groupVio) {
+		case 0:
+			PortName = "Zmod Port A";
+			break;
+		default:
+			PortName = "Invalid VIO Group";
+		}
+
+		// Read the standard DNA information
+		SyzygyReadDNAHeader(fdI2cDev, PortInfo[iPort].i2cAddr, &DnaHeader, FALSE);
+		SyzygyReadDNAStrings(fdI2cDev, PortInfo[iPort].i2cAddr, &DnaHeader, &DnaStrings);
+
+		// Read the product id
+		DWORD Pdid;
+		if (!FZmodReadPdid(fdI2cDev, PortInfo[iPort].i2cAddr, &Pdid)) {
+			continue;
+		}
+
+		ZMOD_FAMILY Family;
+		if (!FGetZmodFamily(Pdid, &Family)) {
+			printf("========= Unsupported Zmod (%s) populated on %s =========\r\n", DnaStrings.szProductName, PortName);
+			continue;
+		}
+
+		switch (Family) {
+		case ZMOD_FAMILY_ADC:
+			printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
+			FDisplayZmodADCCal(fdI2cDev, PortInfo[iPort].i2cAddr);
+			ZMOD_ADC_CAL ADCFactoryCalibration, ADCUserCalibration;
+			FGetZmodADCCal(fdI2cDev, PortInfo[iPort].i2cAddr, &ADCFactoryCalibration, &ADCUserCalibration);
+			printf("\r\n");
+			break;
+		case ZMOD_FAMILY_DAC:
+			printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
+			FDisplayZmodDACCal(fdI2cDev, PortInfo[iPort].i2cAddr);
+			ZMOD_DAC_CAL DACFactoryCalibration, DACUserCalibration;
+			FGetZmodDACCal(fdI2cDev, PortInfo[iPort].i2cAddr, &DACFactoryCalibration, &DACUserCalibration);
+			printf("\r\n");
+			break;
+		case ZMOD_FAMILY_DIGITIZER:
+			printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
+			FDisplayZmodDigitizerCal(fdI2cDev, PortInfo[iPort].i2cAddr);
+			ZMOD_DIGITIZER_CAL DigitizerFactoryCalibration, DigitizerUserCalibration;
+			FGetZmodDigitizerCal(fdI2cDev, PortInfo[iPort].i2cAddr, &DigitizerFactoryCalibration, &DigitizerUserCalibration);
+			printf("\r\n");
+			break;
+		case ZMOD_FAMILY_UNSUPPORTED:
+			printf("========= Unsupported Zmod (%s) populated on %s =========\r\n", DnaStrings.szProductName, PortName);
+		}
+
+		// Free memory allocated to hold DNA strings like product name
+		SyzygyFreeDNAStrings(&DnaStrings);
+	}
+
+	return 0;
+}
 
 int main()
 {
     init_platform();
+    print("Entered main\r\n");
 
-    print("Hello World\n\r");
-    print("Successfully ran Hello World application");
+    // Enable only channel 5 on the IIC multiplexer
+	u8 zmod_mux_ch = 0b00010000;
+	u8 mux_i2caddr = 0b01110000;
+    I2CHALLowLevelSend(XPAR_AXI_IIC_DNA_DEVICE_ID, mux_i2caddr, &zmod_mux_ch, 1);
+
+	PrintCalibration();
+
+	// Todo: Pull out cal coefficients and write them to the AXI controller.
+
+	// Start the AWG controller in test mode
+    u32 data = ZMOD_AWG_AXI_CONFIG_CONTROL_TESTMODE_MASK |
+               ZMOD_AWG_AXI_CONFIG_CONTROL_DAC_ENIN_MASK |
+               ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH1SCALE_MASK |
+               ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH2SCALE_MASK;
+    u32 AwgBaseAddress = XPAR_ZMODAWGAXICONFIGURAT_0_S_AXI_CONTROL_BASEADDR;
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, data);
+
+    print("Exiting main\r\n");
     cleanup_platform();
     return 0;
 }

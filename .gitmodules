@@ -1,3 +1,6 @@
 [submodule "repo"]
 	path = repo
 	url = ../embeddedsw.git
+[submodule "src/3eg_master/src/dpmutil"]
+	path = src/3eg_master/src/dpmutil
+	url = http://github.com/Digilent/dpmutil
