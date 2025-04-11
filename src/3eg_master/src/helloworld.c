@@ -45,113 +45,192 @@
  *   ps7_uart    115200 (configured by bootrom/bsp)
  */
 
-#include <stdio.h>
-#include "platform.h"
+#include "xil_printf.h"
 #include "xparameters.h"
 #include "ZmodAwgAxiConfiguration.h"
 #include "xiic.h"
 #include "dpmutil/dpmutil.h"
+#include "dpmutil/I2CHAL.h"
+#include "sleep.h"
+#include "xuartps.h"
 
-int PrintCalibration () {
+// Genesys ZU has a single SYZYGY port hidden behind channel 5 of an i2c mux
+// https://digilent.com/reference/programmable-logic/genesys-zu/reference-manual#zmod
+const BYTE szgI2cAddr = 0x30;
+const BYTE muxI2cAddr = 0x70;
+const BYTE szgMuxChan = 0x20;
+
+// Note: Many DPMUTIL functions only apply to boards using Eclypse/USB104A7-style PMCU firmware.
+//       The Genesys ZU has a different PMCU register set. As such, functionality for enumerating
+//       the Zmod port must be reproduced here.
+BOOL ZmodDetected() {
+	return fTrue;
+}
+
+XUartPs uart;
+BOOL uartInit = fFalse;
+
+BOOL InitializeUart(UINT16 deviceId) {
+	if (!uartInit) {
+		XUartPs_Config *cfgptr;
+		cfgptr = XUartPs_LookupConfig(deviceId);
+		if (cfgptr == NULL) {
+			return fFalse;
+		}
+
+		INT32 status = XUartPs_CfgInitialize(&uart, cfgptr, cfgptr->BaseAddress);
+		if (status != XST_SUCCESS) {
+			return fFalse;
+		}
+
+		XUartPs_SetBaudRate(&uart, 115200);
+		uartInit = fTrue;
+	}
+	return fTrue;
+}
+
+BOOL WaitForNewline() {
+	UCHAR buffer;
+	INT32 bytesReceived;
+
+	xil_printf("Press enter to continue.\r\n");
+	do {
+		bytesReceived = XUartPs_Recv(&uart, &buffer, 1);
+	} while (bytesReceived == 0 || buffer != '\n');
+
+	return fTrue;
+}
+
+
+int ReadCalibration (ZMOD_DAC_CAL *pFactoryCal) {
 	int fdI2cDev = 0; // this isn't using linux so this doesn't matter
-	char *PortName;
-
-	dpmutilPortInfo_t PortInfo[8] = {0};
-
-	// enumerate the Syzygy ports to figure out which have Zmods installed
-	dpmutilFEnum(FALSE, FALSE, PortInfo);
+	char *PortName = "Zmod A";
+	BOOL supported = fFalse; // Whether this demo supports the detected Zmod;
 
 	SzgDnaHeader DnaHeader;
 	SzgDnaStrings DnaStrings = {0};
 
-	// Iterate over all of the ports enumerated
-	for (u32 iPort = 0; iPort < 8; iPort++) {
-		// check if a zmod is populated on that port
-		if (PortInfo[iPort].portSts.fPresent == 0) {
-			continue;
-		}
-
-		// Use group VIO to detect which port is which. For the Eclypse Z7, Zmod A = 0, Zmod B = 1
-		switch (PortInfo[iPort].groupVio) {
-		case 0:
-			PortName = "Zmod Port A";
-			break;
-		default:
-			PortName = "Invalid VIO Group";
-		}
-
-		// Read the standard DNA information
-		SyzygyReadDNAHeader(fdI2cDev, PortInfo[iPort].i2cAddr, &DnaHeader, FALSE);
-		SyzygyReadDNAStrings(fdI2cDev, PortInfo[iPort].i2cAddr, &DnaHeader, &DnaStrings);
-
-		// Read the product id
-		DWORD Pdid;
-		if (!FZmodReadPdid(fdI2cDev, PortInfo[iPort].i2cAddr, &Pdid)) {
-			continue;
-		}
-
-		ZMOD_FAMILY Family;
-		if (!FGetZmodFamily(Pdid, &Family)) {
-			printf("========= Unsupported Zmod (%s) populated on %s =========\r\n", DnaStrings.szProductName, PortName);
-			continue;
-		}
-
-		switch (Family) {
-		case ZMOD_FAMILY_ADC:
-			printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
-			FDisplayZmodADCCal(fdI2cDev, PortInfo[iPort].i2cAddr);
-			ZMOD_ADC_CAL ADCFactoryCalibration, ADCUserCalibration;
-			FGetZmodADCCal(fdI2cDev, PortInfo[iPort].i2cAddr, &ADCFactoryCalibration, &ADCUserCalibration);
-			printf("\r\n");
-			break;
-		case ZMOD_FAMILY_DAC:
-			printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
-			FDisplayZmodDACCal(fdI2cDev, PortInfo[iPort].i2cAddr);
-			ZMOD_DAC_CAL DACFactoryCalibration, DACUserCalibration;
-			FGetZmodDACCal(fdI2cDev, PortInfo[iPort].i2cAddr, &DACFactoryCalibration, &DACUserCalibration);
-			printf("\r\n");
-			break;
-		case ZMOD_FAMILY_DIGITIZER:
-			printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
-			FDisplayZmodDigitizerCal(fdI2cDev, PortInfo[iPort].i2cAddr);
-			ZMOD_DIGITIZER_CAL DigitizerFactoryCalibration, DigitizerUserCalibration;
-			FGetZmodDigitizerCal(fdI2cDev, PortInfo[iPort].i2cAddr, &DigitizerFactoryCalibration, &DigitizerUserCalibration);
-			printf("\r\n");
-			break;
-		case ZMOD_FAMILY_UNSUPPORTED:
-			printf("========= Unsupported Zmod (%s) populated on %s =========\r\n", DnaStrings.szProductName, PortName);
-		}
-
-		// Free memory allocated to hold DNA strings like product name
-		SyzygyFreeDNAStrings(&DnaStrings);
+	if (!ZmodDetected()) {
+		xil_printf("ERROR: No Zmod detected!\r\n");
+		return fFalse;
 	}
 
-	return 0;
+	// Read the product id
+	DWORD Pdid;
+	if (!FZmodReadPdid(fdI2cDev, szgI2cAddr, &Pdid)) {
+		xil_printf("ERROR: Failed to read Zmod product ID.");
+		return fFalse;
+	}
+	// Read the standard DNA information
+	SyzygyReadDNAHeader(fdI2cDev, szgI2cAddr, &DnaHeader, FALSE);
+	SyzygyReadDNAStrings(fdI2cDev, szgI2cAddr, &DnaHeader, &DnaStrings);
+
+	ZMOD_FAMILY Family;
+	if (!FGetZmodFamily(Pdid, &Family)) {
+		xil_printf("ERROR: Unsupported Zmod (%s) populated on %s.\r\n", DnaStrings.szProductName, PortName);
+		SyzygyFreeDNAStrings(&DnaStrings);
+		return fFalse;
+	}
+
+	switch (Family) {
+	case ZMOD_FAMILY_ADC:
+		xil_printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
+		FDisplayZmodADCCal(fdI2cDev, szgI2cAddr);
+		ZMOD_ADC_CAL ADCFactoryCalibration, ADCUserCalibration;
+		FGetZmodADCCal(fdI2cDev, szgI2cAddr, &ADCFactoryCalibration, &ADCUserCalibration);
+		xil_printf("\r\n");
+		break;
+	case ZMOD_FAMILY_DAC:
+		xil_printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
+		FDisplayZmodDACCal(fdI2cDev, szgI2cAddr);
+		ZMOD_DAC_CAL userCal; // unused user calibration
+		FGetZmodDACCal(fdI2cDev, szgI2cAddr, pFactoryCal, &userCal);
+		supported = fTrue;
+		xil_printf("\r\n");
+		break;
+	case ZMOD_FAMILY_DIGITIZER:
+		xil_printf("========= %s : %s Calibration Coefficients =========\r\n", PortName, DnaStrings.szProductName);
+		FDisplayZmodDigitizerCal(fdI2cDev, szgI2cAddr);
+		ZMOD_DIGITIZER_CAL DigitizerFactoryCalibration, DigitizerUserCalibration;
+		FGetZmodDigitizerCal(fdI2cDev, szgI2cAddr, &DigitizerFactoryCalibration, &DigitizerUserCalibration);
+		xil_printf("\r\n");
+		break;
+	case ZMOD_FAMILY_UNSUPPORTED:
+		xil_printf("========= Unsupported Zmod (%s) populated on %s =========\r\n", DnaStrings.szProductName, PortName);
+	}
+
+	SyzygyFreeDNAStrings(&DnaStrings);
+	return supported;
 }
 
 int main()
 {
-    init_platform();
-    print("Entered main\r\n");
+	InitializeUart(XPAR_PSU_UART_0_DEVICE_ID);
 
-    // Enable only channel 5 on the IIC multiplexer
-	u8 zmod_mux_ch = 0b00010000;
-	u8 mux_i2caddr = 0b01110000;
-    I2CHALLowLevelSend(XPAR_AXI_IIC_DNA_DEVICE_ID, mux_i2caddr, &zmod_mux_ch, 1);
+    xil_printf("Entered main\r\n");
 
-	PrintCalibration();
+    // Note: In order for dpmutil i2c reads to get to the SYZYGY DNA, the IIC multiplexer needs to have the
+    //       correct channel selected. This demo does not account for potential additional I2C traffic from
+    //       other masters taking over the bus and switching the multiplexor channels. Consider changing
+    //       dpmutil to start any repeated-start I2C transfer with this mux channel set.
+	BYTE muxChan = szgMuxChan;
+    UINT32 bytes_sent = 0;
+    do {
+    	bytes_sent = I2CHALLowLevelSend(XPAR_AXI_IIC_DNA_DEVICE_ID, muxI2cAddr, &muxChan, 1);
+    } while (!bytes_sent);
 
-	// Todo: Pull out cal coefficients and write them to the AXI controller.
+    // Read the calibration coefficients from DNA
+    ZMOD_DAC_CAL fCal;
+    ZMOD_DAC_CAL_S18 iCal;
 
-	// Start the AWG controller in test mode
-    u32 data = ZMOD_AWG_AXI_CONFIG_CONTROL_TESTMODE_MASK |
-               ZMOD_AWG_AXI_CONFIG_CONTROL_DAC_ENIN_MASK |
-               ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH1SCALE_MASK |
-               ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH2SCALE_MASK;
-    u32 AwgBaseAddress = XPAR_ZMODAWGAXICONFIGURAT_0_S_AXI_CONTROL_BASEADDR;
-    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, data);
+	ReadCalibration(&fCal);
+	FZmodDACCalConvertToS18(fCal, &iCal);
 
-    print("Exiting main\r\n");
-    cleanup_platform();
+	// Write the calibration coefficients to the AWG controller configuration registers
+    UINT32 AwgBaseAddress = XPAR_ZMODAWGAXICONFIGURAT_0_S_AXI_CONTROL_BASEADDR;
+	ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH1LGMULTCOEFF_REG_OFFSET, iCal.cal[0][0][0]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH1LGADDCOEFF_REG_OFFSET,  iCal.cal[0][0][1]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH1HGMULTCOEFF_REG_OFFSET, iCal.cal[0][1][0]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH1HGADDCOEFF_REG_OFFSET,  iCal.cal[0][1][1]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH2LGMULTCOEFF_REG_OFFSET, iCal.cal[1][0][0]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH2LGADDCOEFF_REG_OFFSET,  iCal.cal[1][0][1]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH2HGMULTCOEFF_REG_OFFSET, iCal.cal[1][1][0]);
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_EXTCH2HGADDCOEFF_REG_OFFSET,  iCal.cal[1][1][1]);
+
+    xil_printf("========= Amplitude Tests =========\r\n");
+
+    UINT32 AwgCtrl;
+	// Go through each channel scale setting, pausing for user to press enter in the serial terminal to take measurements.
+    xil_printf("1. Ch1: Low gain, Ch2: Low gain; Test mode disables calibration\r\n");
+    AwgCtrl = ZMOD_AWG_AXI_CONFIG_CONTROL_TESTMODE_MASK |
+           	  ZMOD_AWG_AXI_CONFIG_CONTROL_DAC_ENIN_MASK;
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, AwgCtrl);
+    WaitForNewline();
+
+    xil_printf("2. Ch1: High gain, Ch2: High gain; Test mode disables calibration\r\n");
+    AwgCtrl = ZMOD_AWG_AXI_CONFIG_CONTROL_TESTMODE_MASK |
+           	  ZMOD_AWG_AXI_CONFIG_CONTROL_DAC_ENIN_MASK |
+	          ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH1SCALE_MASK |
+	          ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH2SCALE_MASK;
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, AwgCtrl);
+    WaitForNewline();
+
+    xil_printf("3. Ch1: Low gain, Ch2: Low gain; expected Vpk-pk is 2.5 V\r\n");
+    AwgCtrl = ZMOD_AWG_AXI_CONFIG_CONTROL_DAC_ENIN_MASK;
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, AwgCtrl);
+    WaitForNewline();
+
+    xil_printf("4. Ch1: High gain, Ch2: High gain; expected Vpk-pk is 10.0 V\r\n");
+    AwgCtrl = ZMOD_AWG_AXI_CONFIG_CONTROL_DAC_ENIN_MASK |
+              ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH1SCALE_MASK |
+              ZMOD_AWG_AXI_CONFIG_CONTROL_EXTCH2SCALE_MASK;
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, AwgCtrl);
+    WaitForNewline();
+
+    // Disable the AWG before exiting
+    AwgCtrl = 0;
+    ZmodAwgAxiConfiguration_WriteReg(AwgBaseAddress, ZMOD_AWG_AXI_CONFIG_CONTROL_REG_OFFSET, AwgCtrl);
+
+    xil_printf("Exiting main\r\n");
     return 0;
 }
