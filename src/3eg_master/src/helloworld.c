@@ -48,11 +48,11 @@
 #include "xil_printf.h"
 #include "xparameters.h"
 #include "ZmodAwgAxiConfiguration.h"
-#include "xiic.h"
+#include "xuartps.h"
+#include "xgpio.h"
 #include "dpmutil/dpmutil.h"
 #include "dpmutil/I2CHAL.h"
 #include "sleep.h"
-#include "xuartps.h"
 
 // Genesys ZU has a single SYZYGY port hidden behind channel 5 of an i2c mux
 // https://digilent.com/reference/programmable-logic/genesys-zu/reference-manual#zmod
@@ -64,7 +64,29 @@ const BYTE szgMuxChan = 0x20;
 //       The Genesys ZU has a different PMCU register set. As such, functionality for enumerating
 //       the Zmod port must be reproduced here.
 BOOL ZmodDetected() {
-	return fTrue;
+	static XGpio detect;
+	static BOOL init = fTrue;
+	if (init) {
+		XGpio_Config *cfgptr;
+		cfgptr = XGpio_LookupConfig(XPAR_SYZYGY_DETECTN_DEVICE_ID);
+		if (cfgptr == NULL) {
+			return fFalse;
+		}
+
+		INT32 status;
+		status = XGpio_CfgInitialize(&detect, cfgptr, cfgptr->BaseAddress);
+		if (status != XST_SUCCESS) {
+			return fFalse;
+		}
+
+		init = fFalse;
+	}
+
+	if ((XGpio_DiscreteRead(&detect, 1) & 1) == 0) {
+		return fTrue;
+	}
+
+	return fFalse;
 }
 
 XUartPs uart;
@@ -168,6 +190,11 @@ int main()
 	InitializeUart(XPAR_PSU_UART_0_DEVICE_ID);
 
     xil_printf("Entered main\r\n");
+
+    if (!ZmodDetected()) {
+    	xil_printf("Error: No Zmod is installed!\r\n");
+    	return 1;
+    }
 
     // Note: In order for dpmutil i2c reads to get to the SYZYGY DNA, the IIC multiplexer needs to have the
     //       correct channel selected. This demo does not account for potential additional I2C traffic from
