@@ -1,0 +1,6 @@
+[submodule "repo"]
+	path = repo
+	url = ../embeddedsw.git
+[submodule "scripts"]
+	path = scripts
+	url = ../digilent-vitis-scripts.git
