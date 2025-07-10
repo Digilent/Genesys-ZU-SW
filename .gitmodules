@@ -4,3 +4,5 @@
 [submodule "scripts"]
 	path = scripts
 	url = ../digilent-vitis-scripts.git
+	branch = new_vitis/dev2024.1
+
