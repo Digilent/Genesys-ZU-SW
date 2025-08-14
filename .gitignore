@@ -4,5 +4,11 @@
 !/ws/cleanup.cmd
 !/ws/cleanup.sh
 
-#ignore Packages/ created by Vitis
+# ignore Packages/ created by Vitis
 /Packages
+
+# ignore dfx_runtime.txt created by Vitis
+dfx_runtime.txt
+
+# ignore .Xil/ created by Vitis
+/.Xil

@@ -40,5 +40,5 @@
 		"\"${CMAKE_SOURCE_DIR}/lscript.ld\""
 	],
 	"USER_LINK_OTHER_FLAGS" : [],
-	"3eg_master" : "src\\3eg_hw_p\\3eg_hw_p.xsa"
+	"3eg_master" : "src\\3eg_hw_pf\\3eg_hw_pf.xsa"
 }
